@@ -18,14 +18,14 @@ class User(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     name: Optional[str] = None
     password_hash: Optional[str] = None
-    role: str = Field(
-        default=UserRole.employee.value,
-        sa_column_kwargs={
-            "type_": SAEnum(UserRole, name="user_role", values_callable=lambda x: [e.value for e in x])
-        },
-    )
-    is_active: bool = True
 
+    # ✅ key change: use Enum type annotation + sa_type=..., not sa_column_kwargs
+    role: UserRole = Field(
+        default=UserRole.employee,
+        sa_type=SAEnum(UserRole, name="user_role", values_callable=lambda e: [x.value for x in e]),
+    )
+
+    is_active: bool = True
     created_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
     updated_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
 
