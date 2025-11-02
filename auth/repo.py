@@ -3,12 +3,12 @@ from typing import Optional
 from sqlmodel import Session, select
 from models import User, Invite
 
-def get_user_by_email(session: Session, email: str) -> Optional[User]:
+def get_user_by_email(session, email: str):
     stmt = select(User).where(User.email == email)
     return session.exec(stmt).first()
 
-def get_user_by_username(session: Session, username: str) -> Optional[User]:
-    stmt = select(User).where(User.username == username)
+def get_invite_by_token(session, token: str):
+    stmt = select(Invite).where(Invite.token == token)
     return session.exec(stmt).first()
 
 def create_invite(session: Session, email: str, username: str, token: str, expires_at) -> Invite:

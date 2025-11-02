@@ -1,6 +1,6 @@
+from __future__ import annotations
 from typing import Optional
 from sqlmodel import SQLModel, Field
-from __future__ import annotations
 from typing import Optional
 from datetime import datetime
 from sqlmodel import SQLModel, Field
@@ -15,18 +15,20 @@ class Employee(SQLModel, table=True):
 # ---- keep your existing models above (e.g., Employee) ----
 
 class User(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    email: str = Field(index=True, sa_column_kwargs={"unique": True})
-    username: str = Field(index=True, sa_column_kwargs={"unique": True})
-    password_hash: str
-    is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-class Invite(SQLModel, table=True):
+    __tablename__ = "users"  # <- change if your real table name differs
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True)
     username: str = Field(index=True)
-    token: str = Field(index=True, sa_column_kwargs={"unique": True})
-    status: str = Field(default="pending")  # pending | accepted | expired | revoked
+    password_hash: str
+    is_active: bool = True
+    created_at: Optional[datetime] = None
+
+class Invite(SQLModel, table=True):
+    __tablename__ = "invites"  # <- change if needed
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str
+    username: str
+    token: str = Field(index=True)
+    status: str = "pending"                # pending | accepted | expired | revoked
     expires_at: datetime
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = None

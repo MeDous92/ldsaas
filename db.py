@@ -3,6 +3,8 @@ from sqlmodel import SQLModel, create_engine, Session
 import os
 from sqlmodel import SQLModel
 from db import engine   # your existing engine
+
+
 def init_models():
     SQLModel.metadata.create_all(engine)
     
