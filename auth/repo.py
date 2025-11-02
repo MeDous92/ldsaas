@@ -1,65 +1,35 @@
-from typing import Optional, Dict, Any
-from sqlalchemy import text
-from sqlmodel import Session
+# auth/repo.py
+from typing import Optional
+from sqlmodel import Session, select
+from models import User, Invite
 
-def row_to_user_out(row: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        "id": row["id"],
-        "email": row["email"],
-        "name": row.get("name"),
-        "role": row["role"],
-        "created_at": row["created_at"],
-    }
+def get_user_by_email(session: Session, email: str) -> Optional[User]:
+    stmt = select(User).where(User.email == email)
+    return session.exec(stmt).first()
 
-def get_user_by_email(session: Session, email: str) -> Optional[Dict[str, Any]]:
-    q = text("""
-        SELECT id, email, name, role, password_hash, is_active,
-               invited_at, invited_by, invite_token_hash, invite_expires_at,
-               email_verified_at, created_at
-        FROM users
-        WHERE email = :email
-        LIMIT 1
-    """)
-    row = session.exec(q, {"email": email}).mappings().first()
-    return dict(row) if row else None
+def get_user_by_username(session: Session, username: str) -> Optional[User]:
+    stmt = select(User).where(User.username == username)
+    return session.exec(stmt).first()
 
-def create_user_invited(session: Session, *, email: str, name: str|None, role: str,
-                        invited_by: int|None, invite_token_hash: str, invite_expires_at) -> Dict[str, Any]:
-    q = text("""
-        INSERT INTO users (email, name, role, is_active, invited_at, invited_by, invite_token_hash, invite_expires_at)
-        VALUES (:email, :name, :role, false, now(), :invited_by, :invite_token_hash, :invite_expires_at)
-        RETURNING id, email, name, role, created_at
-    """)
-    row = session.exec(q, {"email": email, "name": name, "role": role,
-                           "invited_by": invited_by, "invite_token_hash": invite_token_hash,
-                           "invite_expires_at": invite_expires_at}).mappings().one()
-    return dict(row)
+def create_invite(session: Session, email: str, username: str, token: str, expires_at) -> Invite:
+    inv = Invite(email=email, username=username, token=token, expires_at=expires_at, status="pending")
+    session.add(inv)
+    session.commit()
+    session.refresh(inv)
+    return inv
 
-def update_user_invite(session: Session, *, user_id: int, invite_token_hash: str, invite_expires_at, invited_by: int|None) -> Dict[str, Any]:
-    q = text("""
-        UPDATE users
-        SET invited_at = now(),
-            invited_by = :invited_by,
-            invite_token_hash = :invite_token_hash,
-            invite_expires_at = :invite_expires_at
-        WHERE id = :user_id
-        RETURNING id, email, name, role, created_at
-    """)
-    row = session.exec(q, {"user_id": user_id, "invited_by": invited_by,
-                           "invite_token_hash": invite_token_hash, "invite_expires_at": invite_expires_at}).mappings().one()
-    return dict(row)
+def get_invite_by_token(session: Session, token: str) -> Optional[Invite]:
+    stmt = select(Invite).where(Invite.token == token)
+    return session.exec(stmt).first()
 
-def accept_invite_set_password(session: Session, *, email: str, password_hash: str) -> Dict[str, Any]:
-    q = text("""
-        UPDATE users
-        SET password_hash = :password_hash,
-            invite_token_hash = NULL,
-            invite_expires_at = NULL,
-            email_verified_at = now(),
-            is_active = true,
-            updated_at = now()
-        WHERE email = :email
-        RETURNING id, email, name, role, created_at
-    """)
-    row = session.exec(q, {"email": email, "password_hash": password_hash}).mappings().one()
-    return dict(row)
+def mark_invite_accepted(session: Session, invite: Invite) -> None:
+    invite.status = "accepted"
+    session.add(invite)
+    session.commit()
+
+def create_user(session: Session, email: str, username: str, password_hash: str) -> User:
+    user = User(email=email, username=username, password_hash=password_hash, is_active=True)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
