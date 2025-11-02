@@ -21,3 +21,7 @@ class UserOut(BaseModel):
     name: Optional[str] = None
     role: str
     is_active: bool
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
