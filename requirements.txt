@@ -1,6 +1,6 @@
-psycopg[binary]
-python-jose[cryptography]
-passlib[bcrypt]
-python-dotenv
 fastapi
 uvicorn
+sqlmodel
+sqlalchemy>=2.0
+psycopg[binary]
+python-dotenv
