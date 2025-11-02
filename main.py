@@ -34,3 +34,7 @@ def health():
 @app.get("/employees", response_model=List[Employee])
 def list_employees(limit: int = 50, offset: int = 0, session: Session = Depends(get_session)):
     return session.exec(select(Employee).limit(limit).offset(offset)).all()
+
+@app.get("/hello")
+def hello():
+    return "Hello"
