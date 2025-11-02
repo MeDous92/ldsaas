@@ -3,10 +3,16 @@ from datetime import datetime, timedelta, timezone
 from passlib.hash import bcrypt
 from jose import jwt
 
-JWT_SECRET = os.environ["JWT_SECRET"]
-JWT_ISSUER = os.environ.get("JWT_ISSUER", "ldsaas")
-ACCESS_TTL_MIN = int(os.environ.get("ACCESS_TTL_MIN", "30"))
-REFRESH_TTL_DAYS = int(os.environ.get("REFRESH_TTL_DAYS", "7"))
+# <-- make env reads safe at import time
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    # dev fallback so the container won’t crash; set a real secret in Coolify envs
+    JWT_SECRET = "_dev_only_change_me_"
+    print("WARNING: JWT_SECRET not set; using insecure dev secret.")
+
+JWT_ISSUER = os.getenv("JWT_ISSUER", "ldsaas")
+ACCESS_TTL_MIN = int(os.getenv("ACCESS_TTL_MIN", "30"))
+REFRESH_TTL_DAYS = int(os.getenv("REFRESH_TTL_DAYS", "7"))
 
 def hash_password(plain: str) -> str:
     return bcrypt.hash(plain)

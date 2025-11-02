@@ -6,7 +6,8 @@ from schemas import InviteIn, AcceptInviteIn, UserOut, TokensOut
 from security import hash_token, verify_token, hash_password, create_access_token, create_refresh_token
 from . import repo
 
-FRONT_URL = os.environ.get("APP_FRONTEND_URL", "http://localhost:5173")
+
+FRONT_URL = os.getenv("APP_FRONTEND_URL") or os.getenv("FRONTEND_URL") or "http://localhost:5173"
 
 def invite_user(session: Session, data: InviteIn, actor_user_id: int | None = None) -> None:
     user = repo.get_user_by_email(session, data.email)
