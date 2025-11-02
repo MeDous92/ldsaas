@@ -38,7 +38,3 @@ def list_employees(limit: int = 50, offset: int = 0, session: Session = Depends(
 @app.get("/hello")
 def hello():
     return "Hello"
-
-@app.get("/ss")
-def hello():
-    return "ss"
