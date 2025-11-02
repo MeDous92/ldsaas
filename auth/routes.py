@@ -1,5 +1,5 @@
 # app/auth/routes.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from db import get_session
@@ -9,6 +9,7 @@ from . import repo
 from .deps import get_current_user, require_admin_user
 from models import User
 from security import verify_password, create_access_token, create_refresh_token
+from mailer import build_invite_email, send_email
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -39,6 +40,8 @@ def invite(
     actor: User = Depends(require_admin_user),
 ):
     email, token = invite_user(session, data, actor_user_id=actor.id)
+    msg = build_invite_email(email, token)
+    background.add_task(send_email, msg)
     return InviteOut(email=email, token=token)
 
 @router.post("/accept-invite")

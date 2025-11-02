@@ -25,5 +25,5 @@ def get_current_user(
 
 def require_admin_user(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admins only")
+        raise HTTPException(status_code=403, detail="Not authenticated to send invitation, needs Admin permission.")
     return user
