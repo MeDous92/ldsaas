@@ -1,6 +1,8 @@
 # app/schemas.py
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, constr
+
+MAX_PWD_BYTES = 72
 
 class InviteIn(BaseModel):
     email: EmailStr
@@ -11,9 +13,9 @@ class InviteOut(BaseModel):
     token: str  # raw token (only returned once to the inviter)
 
 class AcceptInviteIn(BaseModel):
-    email: EmailStr
+    email: constr(strip_whitespace=True)
     token: str
-    password: str
+    password: constr(min_length=8, max_length=72)
 
 class UserOut(BaseModel):
     id: int

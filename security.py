@@ -12,6 +12,8 @@ ACCESS_TTL_MIN = int(os.getenv("ACCESS_TTL_MIN", "30"))
 REFRESH_TTL_DAYS = int(os.getenv("REFRESH_TTL_DAYS", "7"))
 
 def hash_password(plain: str) -> str:
+    if len(plain.encode("utf-8")) > 72:
+        raise ValueError("Password too long for bcrypt (max 72 bytes).")
     return bcrypt.hash(plain)
 
 def verify_password(plain: str, hashed: str) -> bool:
