@@ -1,5 +1,6 @@
-from pydantic import BaseModel, EmailStr
+# app/schemas.py
 from typing import Optional
+from pydantic import BaseModel, EmailStr
 
 class InviteIn(BaseModel):
     email: EmailStr
@@ -7,13 +8,12 @@ class InviteIn(BaseModel):
 
 class InviteOut(BaseModel):
     email: EmailStr
-    token: str  # plain token returned to the inviter (e.g., to email out)
+    token: str  # raw token (only returned once to the inviter)
 
 class AcceptInviteIn(BaseModel):
     email: EmailStr
     token: str
     password: str
-    name: Optional[str] = None
 
 class UserOut(BaseModel):
     id: int
@@ -21,11 +21,3 @@ class UserOut(BaseModel):
     name: Optional[str] = None
     role: str
     is_active: bool
-
-class TokensOut(BaseModel):  # keep for later JWT integration
-    access_token: str
-    token_type: str = "bearer"
-
-class LoginIn(BaseModel):
-    email: EmailStr
-    password: str

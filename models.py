@@ -1,34 +1,42 @@
+# app/models.py
 from __future__ import annotations
 
 from typing import Optional
 from datetime import datetime
-from enum import Enum
 from sqlmodel import SQLModel, Field
-from sqlalchemy import Enum as SAEnum, text
+from sqlalchemy import Column, text
+from sqlalchemy.dialects.postgresql import ENUM as PGEnum
 
-class UserRole(str, Enum):
-    admin = "admin"
-    manager = "manager"
-    employee = "employee"
+# We map the existing Postgres enum `user_role`
+# ENUM defined by migrations: ('admin','manager','employee')
+pg_user_role = PGEnum(
+    "admin", "manager", "employee",
+    name="user_role",
+    create_type=False,  # do NOT try to create from the ORM
+)
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    email: str = Field(index=True, unique=True)
+    email: str = Field(index=True, unique=True)  # DB has CITEXT + unique
     name: Optional[str] = None
-    password_hash: Optional[str] = None
 
-    # ✅ key change: use Enum type annotation + sa_type=..., not sa_column_kwargs
-    role: UserRole = Field(
-        default=UserRole.employee,
-        sa_type=SAEnum(UserRole, name="user_role", values_callable=lambda e: [x.value for x in e]),
+    # password_hash is nullable in DB so invited users can exist without a password
+    password_hash: Optional[str] = Field(default=None)
+
+    # Map to the existing enum column; keep a default of 'employee'
+    role: str = Field(
+        default="employee",
+        sa_column=Column(pg_user_role, nullable=False, server_default="employee"),
     )
 
-    is_active: bool = True
+    is_active: bool = Field(default=True)
+
     created_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
     updated_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
 
+    # Invite flow fields
     invited_at: Optional[datetime] = None
     invited_by: Optional[int] = None
     invite_token_hash: Optional[str] = None

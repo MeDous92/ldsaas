@@ -1,18 +1,24 @@
-# service.py
+# app/auth/service.py
 import os
 from datetime import datetime, timedelta, timezone
 from sqlmodel import Session
 from schemas import InviteIn, AcceptInviteIn
 from . import repo
-from security import hash_password, hash_token, verify_token  # <- bcrypt-based
+from security import hash_password, oauth2_scheme
+from passlib.hash import bcrypt
 
-INVITE_TTL_HOURS = 48
+INVITE_TTL_HOURS = int(os.getenv("INVITE_TTL_HOURS", "48"))
+
+def _hash_invite_token(raw: str) -> str:
+    # Store a bcrypt hash of the token (like a password)
+    return bcrypt.hash(raw)
+
+def _verify_invite_token(raw: str, hashed: str) -> bool:
+    return bcrypt.verify(raw, hashed)
 
 def invite_user(session: Session, data: InviteIn, actor_user_id: int | None) -> tuple[str, str]:
-    # Generate a random plaintext token for the invite link/email
-    token = os.urandom(16).hex()
-    # Store only a bcrypt hash of that token in DB
-    token_hash = hash_token(token)
+    raw_token = os.urandom(16).hex()
+    token_hash = _hash_invite_token(raw_token)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=INVITE_TTL_HOURS)
 
     user = repo.create_or_update_invite(
@@ -23,20 +29,21 @@ def invite_user(session: Session, data: InviteIn, actor_user_id: int | None) -> 
         expires_at=expires_at,
         invited_by=actor_user_id,
     )
-    # Return plaintext token to caller (to send via email/DM)
-    return (user.email, token)
+    # Return the token (shown once); email or UI sends it to the invitee
+    return (user.email, raw_token)
 
 def accept_invite(session: Session, data: AcceptInviteIn) -> bool:
     user = repo.get_user_by_email(session, data.email)
-    if not user or not user.invite_token_hash or not user.invite_expires_at:
+    if not user:
+        return False
+    if not user.invite_token_hash or not user.invite_expires_at:
         return False
     if datetime.now(timezone.utc) > user.invite_expires_at:
         return False
 
-    # Verify plaintext token against bcrypt hash
-    if not verify_token(data.token, user.invite_token_hash):
+    if not _verify_invite_token(data.token, user.invite_token_hash):
         return False
 
-    # Hash password with bcrypt and activate user
-    repo.accept_invite_set_password(session, data.email, hash_password(data.password))
+    password_hash = hash_password(data.password)
+    repo.set_password_and_activate(session, user, password_hash)
     return True
