@@ -1,34 +1,35 @@
 from __future__ import annotations
-from typing import Optional
-from sqlmodel import SQLModel, Field
+
 from typing import Optional
 from datetime import datetime
 from sqlmodel import SQLModel, Field
+from sqlalchemy import Enum as SAEnum, text
 
-class Employee(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    role: Optional[str] = None
-# models.py
-
-
-# ---- keep your existing models above (e.g., Employee) ----
+# Match Postgres enum name = user_role
+class UserRole(str):
+    admin = "admin"
+    manager = "manager"
+    employee = "employee"
 
 class User(SQLModel, table=True):
-    __tablename__ = "users"  # <- change if your real table name differs
-    id: Optional[int] = Field(default=None, primary_key=True)
-    email: str = Field(index=True)
-    username: str = Field(index=True)
-    password_hash: str
-    is_active: bool = True
-    created_at: Optional[datetime] = None
+    __tablename__ = "users"
 
-class Invite(SQLModel, table=True):
-    __tablename__ = "invites"  # <- change if needed
     id: Optional[int] = Field(default=None, primary_key=True)
-    email: str
-    username: str
-    token: str = Field(index=True)
-    status: str = "pending"                # pending | accepted | expired | revoked
-    expires_at: datetime
-    created_at: Optional[datetime] = None
+    email: str = Field(index=True, unique=True)      # CITEXT in DB, fine to map as str
+    name: Optional[str] = None
+    password_hash: Optional[str] = None
+    role: str = Field(
+        default=UserRole.employee,
+        sa_column_kwargs={"type_": SAEnum(UserRole.admin, UserRole.manager, UserRole.employee, name="user_role")}
+    )
+    is_active: bool = True
+
+    created_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
+    updated_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
+
+    # invite-first flow fields
+    invited_at: Optional[datetime] = None
+    invited_by: Optional[int] = None
+    invite_token_hash: Optional[str] = None
+    invite_expires_at: Optional[datetime] = None
+    email_verified_at: Optional[datetime] = None

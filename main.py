@@ -1,51 +1,22 @@
-import os, logging
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
-from sqlmodel import SQLModel, select, Session
-from models import Employee
-from db import engine, get_session
+from db import create_engine_and_sessionmaker  # your existing helper
 from auth.routes import router as auth_router
 
-
-log = logging.getLogger("uvicorn.error")
-
-app = FastAPI(title="L&D SaaS API (dev)")
-
-ALLOWED_ORIGINS = [
-    "https://front.167.86.97.226.sslip.io",
-    # add your local dev origin if needed:
-    # "http://localhost:5173",
-    # "http://localhost:3000",
-]
+app = FastAPI(title="L&D SaaS API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=["*"],  # tighten later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(auth_router, prefix="/api/v1")
-
-@app.on_event("startup")
-def on_startup():
-    # Skip auto-create in prod (prevents crash if DB not reachable)
-    if os.getenv("ENV", "dev") != "prod":
-        try:
-            SQLModel.metadata.create_all(engine)
-        except Exception as e:
-            log.error(f"DB init failed (dev mode): {e}")
-
+# health
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-@app.get("/employees", response_model=List[Employee])
-def list_employees(limit: int = 50, offset: int = 0, session: Session = Depends(get_session)):
-    return session.exec(select(Employee).limit(limit).offset(offset)).all()
-
-@app.get("/hello")
-def hello():
-    return "Hello"
+# routers
+app.include_router(auth_router)

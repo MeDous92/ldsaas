@@ -1,31 +1,27 @@
-from datetime import datetime
-from typing import Literal, Optional
 from pydantic import BaseModel, EmailStr
-
-Role = Literal["admin", "manager", "employee"]
+from typing import Optional
 
 class InviteIn(BaseModel):
     email: EmailStr
     name: Optional[str] = None
-    role: Optional[Role] = "employee"
+
+class InviteOut(BaseModel):
+    email: EmailStr
+    token: str  # plain token returned to the inviter (e.g., to email out)
 
 class AcceptInviteIn(BaseModel):
     email: EmailStr
     token: str
     password: str
-
-class LoginIn(BaseModel):
-    email: EmailStr
-    password: str
+    name: Optional[str] = None
 
 class UserOut(BaseModel):
     id: int
     email: EmailStr
     name: Optional[str] = None
     role: str
-    created_at: datetime
+    is_active: bool
 
-class TokensOut(BaseModel):
+class TokensOut(BaseModel):  # keep for later JWT integration
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"

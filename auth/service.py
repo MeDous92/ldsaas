@@ -1,53 +1,48 @@
-import os, secrets
+import hashlib
+import hmac
+import os
 from datetime import datetime, timedelta, timezone
-from typing import Tuple
 from sqlmodel import Session
-from schemas import InviteIn, AcceptInviteIn, UserOut, TokensOut
-from security import hash_token, verify_token, hash_password, create_access_token, create_refresh_token
+from schemas import InviteIn, AcceptInviteIn
 from . import repo
 
+INVITE_TTL_HOURS = 48
+# Use a secret to HMAC the token before storing (safer than plain SHA256)
+INVITE_SECRET = os.getenv("INVITE_SECRET", "dev-secret-change-me").encode()
 
-FRONT_URL = os.getenv("APP_FRONTEND_URL") or os.getenv("FRONTEND_URL") or "http://localhost:5173"
+def _hash_token(token: str) -> str:
+    return hmac.new(INVITE_SECRET, token.encode(), hashlib.sha256).hexdigest()
 
-def invite_user(session: Session, data: InviteIn, actor_user_id: int | None = None) -> None:
-    user = repo.get_user_by_email(session, data.email)
-    raw = secrets.token_urlsafe(32)
-    token_hash = hash_token(raw)
-    expires = datetime.now(timezone.utc) + timedelta(hours=24)
+def invite_user(session: Session, data: InviteIn, actor_user_id: int | None) -> tuple[str, str]:
+    token = os.urandom(16).hex()
+    token_hash = _hash_token(token)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=INVITE_TTL_HOURS)
 
-    if user:
-        if user["is_active"]:
-            raise ValueError("User already active")
-        repo.update_user_invite(session, user_id=user["id"], invite_token_hash=token_hash,
-                                invite_expires_at=expires, invited_by=actor_user_id)
-        link_user = {"email": user["email"]}
-    else:
-        new_u = repo.create_user_invited(session, email=data.email, name=data.name or None,
-                                         role=data.role or "employee", invited_by=actor_user_id,
-                                         invite_token_hash=token_hash, invite_expires_at=expires)
-        link_user = {"email": new_u["email"]}
+    user = repo.create_or_update_invite(
+        session=session,
+        email=data.email,
+        name=data.name,
+        token_hash=token_hash,
+        expires_at=expires_at,
+        invited_by=actor_user_id,
+    )
+    return (user.email, token)
 
-    link = f"{FRONT_URL}/accept-invite?token={raw}&email={link_user['email']}"
-    print("INVITE LINK:", link)  # TODO: replace with email send
-    # no return
-
-def accept_invite(session: Session, data: AcceptInviteIn) -> Tuple[UserOut, TokensOut]:
+def accept_invite(session: Session, data: AcceptInviteIn) -> bool:
     user = repo.get_user_by_email(session, data.email)
     if not user:
-        raise ValueError("No such invite")
+        return False
+    if not user.invite_token_hash or not user.invite_expires_at:
+        return False
+    if datetime.now(timezone.utc) > user.invite_expires_at:
+        return False
 
-    if not user.get("invite_expires_at"):
-        raise ValueError("Invite not found")
+    # verify token
+    given_hash = _hash_token(data.token)
+    if not hmac.compare_digest(given_hash, user.invite_token_hash):
+        return False
 
-    if user["invite_expires_at"] < datetime.now(timezone.utc):
-        raise ValueError("Invite expired")
-
-    if not verify_token(data.token, user["invite_token_hash"]):
-        raise ValueError("Invalid token")
-
-    pw_hash = hash_password(data.password)
-    updated = repo.accept_invite_set_password(session, email=data.email, password_hash=pw_hash)
-
-    access = create_access_token(updated["id"], updated["role"])
-    refresh = create_refresh_token(updated["id"], updated["role"])
-    return UserOut(**updated), TokensOut(access_token=access, refresh_token=refresh)
+    # hash password (replace with passlib/bcrypt in production)
+    password_hash = hashlib.sha256(data.password.encode()).hexdigest()
+    repo.accept_invite_set_password(session, data.email, password_hash)
+    return True
