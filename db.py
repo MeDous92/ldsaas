@@ -3,9 +3,10 @@ import os
 from contextlib import contextmanager
 import psycopg
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set")
+
 
 # One global connection pool
 _pool = None
