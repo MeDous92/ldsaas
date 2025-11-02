@@ -11,13 +11,18 @@ JWT_ISSUER = os.getenv("JWT_ISSUER", "ldsaas")
 ACCESS_TTL_MIN = int(os.getenv("ACCESS_TTL_MIN", "30"))
 REFRESH_TTL_DAYS = int(os.getenv("REFRESH_TTL_DAYS", "7"))
 
+
+_MAX = 72
+
+def _trunc(p: str) -> str:
+    # keep behavior consistent for unicode >72 bytes
+    return p.encode("utf-8")[:_MAX].decode("utf-8", "ignore")
+
 def hash_password(plain: str) -> str:
-    if len(plain.encode("utf-8")) > 72:
-        raise ValueError("Password too long for bcrypt (max 72 bytes).")
-    return bcrypt.hash(plain)
+    return bcrypt.hash(_trunc(plain))
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.verify(plain, hashed)
+    return bcrypt.verify(_trunc(plain), hashed)
 
 def _jwt(sub: int, role: str, ttl: timedelta, aud: str) -> str:
     now = datetime.now(timezone.utc)

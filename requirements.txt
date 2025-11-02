@@ -3,9 +3,10 @@ uvicorn
 sqlmodel
 sqlalchemy>=2.0
 psycopg[binary]
-passlib[bcrypt]
 python-jose[cryptography]
 python-dotenv
 email-validator
 pydantic[email]
 python-multipart
+passlib[bcrypt]==1.7.4
+bcrypt>=4.1.2
