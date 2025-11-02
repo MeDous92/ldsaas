@@ -44,3 +44,29 @@ def create_access_token(user_id: int, role: str) -> str:
 
 def create_refresh_token(user_id: int, role: str) -> str:
     return _jwt(user_id, role, timedelta(days=REFRESH_TTL_DAYS), "refresh")
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+def _decode(token: str) -> dict:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"], audience="access", issuer=JWT_ISSUER)
+        return payload
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    session: Session = Depends(get_session)
+) -> User:
+    payload = _decode(token)
+    user_id = int(payload["sub"])
+    user = session.get(User, user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="Inactive or not found")
+    return user
+
+def require_admin_user(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+    return user

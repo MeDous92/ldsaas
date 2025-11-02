@@ -1,21 +1,18 @@
-import hashlib
-import hmac
+# service.py
 import os
 from datetime import datetime, timedelta, timezone
 from sqlmodel import Session
 from schemas import InviteIn, AcceptInviteIn
 from . import repo
+from security import hash_password, hash_token, verify_token  # <- bcrypt-based
 
 INVITE_TTL_HOURS = 48
-# Use a secret to HMAC the token before storing (safer than plain SHA256)
-INVITE_SECRET = os.getenv("INVITE_SECRET", "dev-secret-change-me").encode()
-
-def _hash_token(token: str) -> str:
-    return hmac.new(INVITE_SECRET, token.encode(), hashlib.sha256).hexdigest()
 
 def invite_user(session: Session, data: InviteIn, actor_user_id: int | None) -> tuple[str, str]:
+    # Generate a random plaintext token for the invite link/email
     token = os.urandom(16).hex()
-    token_hash = _hash_token(token)
+    # Store only a bcrypt hash of that token in DB
+    token_hash = hash_token(token)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=INVITE_TTL_HOURS)
 
     user = repo.create_or_update_invite(
@@ -26,23 +23,20 @@ def invite_user(session: Session, data: InviteIn, actor_user_id: int | None) -> 
         expires_at=expires_at,
         invited_by=actor_user_id,
     )
+    # Return plaintext token to caller (to send via email/DM)
     return (user.email, token)
 
 def accept_invite(session: Session, data: AcceptInviteIn) -> bool:
     user = repo.get_user_by_email(session, data.email)
-    if not user:
-        return False
-    if not user.invite_token_hash or not user.invite_expires_at:
+    if not user or not user.invite_token_hash or not user.invite_expires_at:
         return False
     if datetime.now(timezone.utc) > user.invite_expires_at:
         return False
 
-    # verify token
-    given_hash = _hash_token(data.token)
-    if not hmac.compare_digest(given_hash, user.invite_token_hash):
+    # Verify plaintext token against bcrypt hash
+    if not verify_token(data.token, user.invite_token_hash):
         return False
 
-    # hash password (replace with passlib/bcrypt in production)
-    password_hash = hashlib.sha256(data.password.encode()).hexdigest()
-    repo.accept_invite_set_password(session, data.email, password_hash)
+    # Hash password with bcrypt and activate user
+    repo.accept_invite_set_password(session, data.email, hash_password(data.password))
     return True

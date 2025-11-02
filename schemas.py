@@ -25,3 +25,7 @@ class UserOut(BaseModel):
 class TokensOut(BaseModel):  # keep for later JWT integration
     access_token: str
     token_type: str = "bearer"
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
