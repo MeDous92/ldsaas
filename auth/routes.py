@@ -36,6 +36,7 @@ def login(
 @router.post("/invite", response_model=InviteOut, dependencies=[Depends(require_admin_user)])
 def invite(
     data: InviteIn,
+    background: BackgroundTasks,
     session: Session = Depends(get_session),
     actor: User = Depends(require_admin_user),
 ):
