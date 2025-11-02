@@ -12,26 +12,24 @@ from security import verify_password, create_access_token, create_refresh_token
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
+@router.post("/login")
 def login(
     form: OAuth2PasswordRequestForm = Depends(),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_session)
 ):
-    # OAuth2 “username” = we use email
-    user = repo.get_user_by_email(session, form.username)
-    if not user or not user.is_active or not user.password_hash:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    # OAuth2PasswordRequestForm gives .username and .password
+    email = form.username.strip().lower()
 
-    # verify bcrypt; if hash is invalid format, treat as bad creds
-    try:
-        ok = verify_password(form.password, user.password_hash)
-    except Exception:
-        ok = False
+    user = repo.get_user_by_email(session, email)
+    if not user or not user.password_hash or not verify_password(form.password, user.password_hash):
+        # keep message generic for security
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    if not ok:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="User is inactive")
 
-    access = create_access_token(user.id, user.role)
-    refresh = create_refresh_token(user.id, user.role)
+    access  = create_access_token(user_id=user.id, role=user.role)
+    refresh = create_refresh_token(user_id=user.id, role=user.role)
     return {"access_token": access, "refresh_token": refresh, "token_type": "bearer"}
 
 @router.post("/invite", response_model=InviteOut, dependencies=[Depends(require_admin_user)])

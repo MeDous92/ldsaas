@@ -5,6 +5,7 @@ from passlib.hash import bcrypt
 from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
 
+
 JWT_SECRET = os.getenv("JWT_SECRET") or "_dev_only_change_me_"
 JWT_ISSUER = os.getenv("JWT_ISSUER", "ldsaas")
 ACCESS_TTL_MIN = int(os.getenv("ACCESS_TTL_MIN", "30"))
