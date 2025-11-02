@@ -5,6 +5,8 @@ from typing import List
 from sqlmodel import SQLModel, select, Session
 from models import Employee
 from db import engine, get_session
+from auth.routes import router as auth_router
+
 
 log = logging.getLogger("uvicorn.error")
 
@@ -24,6 +26,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router, prefix="/api/v1")
 
 @app.on_event("startup")
 def on_startup():

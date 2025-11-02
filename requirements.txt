@@ -3,4 +3,6 @@ uvicorn
 sqlmodel
 sqlalchemy>=2.0
 psycopg[binary]
+passlib[bcrypt]
+python-jose[cryptography]
 python-dotenv
