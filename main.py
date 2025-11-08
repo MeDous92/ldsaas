@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from auth.routes import router as auth_router
+from routers.users import router as users_router
 
 app = FastAPI(title="L&D SaaS Backend", version="0.1.0")
 
@@ -22,3 +23,4 @@ def health():
 
 # mount auth
 app.include_router(auth_router)
+app.include_router(users_router)
