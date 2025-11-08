@@ -12,6 +12,8 @@ from security import verify_password, create_access_token, create_refresh_token
 from mailer import build_invite_email, send_email
 import os
 from urllib.parse import quote
+from users.status import derive_status
+
 
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://front.167.86.97.226.sslip.io")
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
@@ -30,6 +32,14 @@ def login(
     if not user.is_active:
         raise HTTPException(status_code=403, detail="User is inactive")
 
+    # --- ensure status stays truthful ---
+    derived = derive_status(user)
+    if user.status != derived:
+        user.status = derived
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        
     access  = create_access_token(user_id=user.id, role=user.role)
     refresh = create_refresh_token(user_id=user.id, role=user.role)
 
@@ -43,6 +53,7 @@ def login(
             name=user.name,
             role=user.role,
             is_active=user.is_active,
+            status=user.status, # <-- now included
         )
     )
 
@@ -76,7 +87,14 @@ def accept(data: AcceptInviteIn, session: Session = Depends(get_session)):
     return {"status": "ok"}
 
 @router.get("/me", response_model=UserOut)
-def me(current: User = Depends(get_current_user)):
+def me(current: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    derived = derive_status(current)
+    if current.status != derived:
+        current.status = derived
+        session.add(current)
+        session.commit()
+        session.refresh(current)
+    
     return UserOut(
         id=current.id,
         email=current.email,

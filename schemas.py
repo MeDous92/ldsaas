@@ -1,8 +1,14 @@
 # app/schemas.py
 from typing import Optional
 from pydantic import BaseModel, EmailStr, constr
+from enum import Enum
 
 MAX_PWD_BYTES = 72
+
+class UserStatus(str, Enum):
+    pending = "pending"
+    active = "active"
+    inactive = "inactive"
 
 class InviteIn(BaseModel):
     email: EmailStr
@@ -25,6 +31,9 @@ class UserOut(BaseModel):
     name: Optional[str] = None
     role: str
     is_active: bool
+    status: UserStatus
+    class Config:
+        from_attributes = True
 
 class LoginIn(BaseModel):
     email: EmailStr

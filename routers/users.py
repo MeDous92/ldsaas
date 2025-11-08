@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 from models import User
 from db import get_session
 from auth.deps import require_admin_user, get_current_user
+from users.status import derive_status
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
@@ -56,6 +57,7 @@ def soft_delete_user(
         return
 
     target.is_active = False
+    target.status = derive_status(target)
     session.add(target)
     session.commit()
     return

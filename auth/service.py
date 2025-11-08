@@ -6,6 +6,7 @@ from schemas import InviteIn, AcceptInviteIn
 from . import repo
 from security import hash_password, oauth2_scheme
 from passlib.hash import bcrypt
+from users.status import derive_status
 
 INVITE_TTL_HOURS = int(os.getenv("INVITE_TTL_HOURS", "48"))
 
@@ -29,6 +30,11 @@ def invite_user(session: Session, data: InviteIn, actor_user_id: int | None) -> 
         expires_at=expires_at,
         invited_by=actor_user_id,
     )
+        # Keep invited users INACTIVE until they accept
+    user.is_active = False
+    user.status = derive_status(user)  # -> "pending"
+    session.add(user)
+    session.commit()
     # Return the token (shown once); email or UI sends it to the invitee
     return (user.email, raw_token)
 
@@ -44,6 +50,14 @@ def accept_invite(session: Session, data: AcceptInviteIn) -> bool:
     if not _verify_invite_token(data.token, user.invite_token_hash):
         return False
 
-    password_hash = hash_password(data.password)
-    repo.set_password_and_activate(session, user, password_hash)
+    user.password_hash = hash_password(data.password)
+    user.invite_token_hash = None
+    user.invite_expires_at = None
+    user.email_verified_at = datetime.now(timezone.utc)
+
+    # Activate on acceptance
+    user.is_active = True
+    user.status = derive_status(user)  # -> "active"
+    session.add(user)
+    session.commit()
     return True
