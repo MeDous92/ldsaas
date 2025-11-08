@@ -27,3 +27,9 @@ class UserOut(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+
+class LoginOut(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: UserOut

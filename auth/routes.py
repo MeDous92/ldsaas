@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from db import get_session
-from schemas import InviteIn, InviteOut, AcceptInviteIn, UserOut, LoginIn
+from schemas import InviteIn, InviteOut, AcceptInviteIn, UserOut, LoginIn, LoginOut
 from .service import invite_user, accept_invite
 from . import repo
 from .deps import get_current_user, require_admin_user
@@ -13,17 +13,15 @@ from mailer import build_invite_email, send_email
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
-@router.post("/login")
+@router.post("/login", response_model=LoginOut)
 def login(
     form: OAuth2PasswordRequestForm = Depends(),
     session: Session = Depends(get_session)
 ):
-    # OAuth2PasswordRequestForm gives .username and .password
     email = form.username.strip().lower()
 
     user = repo.get_user_by_email(session, email)
     if not user or not user.password_hash or not verify_password(form.password, user.password_hash):
-        # keep message generic for security
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if not user.is_active:
@@ -31,7 +29,19 @@ def login(
 
     access  = create_access_token(user_id=user.id, role=user.role)
     refresh = create_refresh_token(user_id=user.id, role=user.role)
-    return {"access_token": access, "refresh_token": refresh, "token_type": "bearer"}
+
+    return LoginOut(
+        access_token=access,
+        refresh_token=refresh,
+        token_type="bearer",
+        user=UserOut(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            role=user.role,
+            is_active=user.is_active,
+        )
+    )
 
 @router.post("/invite", response_model=InviteOut, dependencies=[Depends(require_admin_user)])
 def invite(
