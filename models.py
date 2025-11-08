@@ -21,6 +21,7 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)  # DB has CITEXT + unique
     name: Optional[str] = None
+    status: Optional[str] = None
 
     # password_hash is nullable in DB so invited users can exist without a password
     password_hash: Optional[str] = Field(default=None)
