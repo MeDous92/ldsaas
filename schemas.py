@@ -11,6 +11,8 @@ class InviteIn(BaseModel):
 class InviteOut(BaseModel):
     email: EmailStr
     token: str  # raw token (only returned once to the inviter)
+    name: Optional[str] = None
+    invite_url: Optional[str] = None
 
 class AcceptInviteIn(BaseModel):
     email: constr(strip_whitespace=True)

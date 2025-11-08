@@ -10,7 +10,10 @@ from .deps import get_current_user, require_admin_user
 from models import User
 from security import verify_password, create_access_token, create_refresh_token
 from mailer import build_invite_email, send_email
+import os
+from urllib.parse import quote
 
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://app.example.com")
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 @router.post("/login", response_model=LoginOut)
@@ -51,9 +54,19 @@ def invite(
     actor: User = Depends(require_admin_user),
 ):
     email, token = invite_user(session, data, actor_user_id=actor.id)
-    msg = build_invite_email(email, token)
+
+    # Build encoded accept-invite URL (includes optional name)
+    base = f"{FRONTEND_ORIGIN}/accept-invite"
+    query = f"token={quote(token)}&email={quote(email)}"
+    name_part = f"&name={quote(data.name)}" if data.name else ""
+    invite_url = f"{base}?{query}{name_part}"
+
+    # Send email (now passes name + invite_url)
+    msg = build_invite_email(email=email, token=token, name=data.name, invite_url=invite_url)
     background.add_task(send_email, msg)
-    return InviteOut(email=email, token=token)
+
+    # Return enriched payload for the caller
+    return InviteOut(email=email, token=token, name=data.name, invite_url=invite_url)
 
 @router.post("/accept-invite")
 def accept(data: AcceptInviteIn, session: Session = Depends(get_session)):
