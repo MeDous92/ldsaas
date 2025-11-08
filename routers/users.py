@@ -17,6 +17,23 @@ def _get_user_or_404(session: Session, user_id: int) -> User:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
+
+# --- GET (temporary): list all users (id, name, email) ---
+
+@router.get("/dev-list", tags=["dev"])
+def list_all_users_dev(
+    session: Session = Depends(get_session),
+    admin: User = Depends(require_admin_user),
+):
+    """
+    ⚠️ DEV-ONLY: Lists all users with id, name, and email.
+    Remove or restrict before deploying to production.
+    """
+    stmt = select(User.id, User.name, User.email).order_by(User.id)
+    results = session.exec(stmt).all()
+    # SQLModel returns list of Row objects; convert to dicts
+    return [dict(r._mapping) for r in results]
+
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def soft_delete_user(
     user_id: int,
