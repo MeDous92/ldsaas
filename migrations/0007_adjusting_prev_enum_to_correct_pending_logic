@@ -1,0 +1,19 @@
+UPDATE users
+SET status = CASE
+    -- PENDING has top priority: invite not expired AND no password yet
+    WHEN invite_expires_at IS NOT NULL
+         AND invite_expires_at > now()
+         AND password_hash IS NULL
+    THEN 'pending'::user_status
+
+    -- Then INACTIVE: explicitly deactivated
+    WHEN is_active = FALSE
+    THEN 'inactive'::user_status
+
+    -- Then ACTIVE: has password and active
+    WHEN password_hash IS NOT NULL AND is_active = TRUE
+    THEN 'active'::user_status
+
+    -- Fallback: mirror is_active
+    ELSE CASE WHEN is_active THEN 'active'::user_status ELSE 'inactive'::user_status END
+END;

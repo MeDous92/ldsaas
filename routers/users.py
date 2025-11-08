@@ -29,7 +29,7 @@ def list_all_users_dev(
     ⚠️ DEV-ONLY: Lists all users with id, name, and email.
     Remove or restrict before deploying to production.
     """
-    stmt = select(User.id, User.name, User.email).order_by(User.id)
+    stmt = select(User.id, User.name, User.email, User.status).order_by(User.id)
     results = session.exec(stmt).all()
     # SQLModel returns list of Row objects; convert to dicts
     return [dict(r._mapping) for r in results]
