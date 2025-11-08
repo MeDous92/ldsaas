@@ -10,25 +10,45 @@ SMTP_PASS = os.getenv("SMTP_PASS", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "no-reply@example.com")
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "https://example.com")
 
-def build_invite_email(to_email: str, invite_token: str):
-    # Link the user will click (frontend page can POST to /accept-invite)
-    accept_url = f"{FRONTEND_BASE_URL}/accept-invite?email={to_email}&token={invite_token}"
+
+def build_invite_email(to: str, token: str, name: str | None = None, invite_url: str | None = None):
+    """
+    Build an invitation email message.
+    - `to`: recipient email
+    - `token`: raw invite token
+    - `name`: optional recipient name
+    - `invite_url`: full accept URL (already built by the route)
+    """
+
+    # Fallback: if route didn't pass invite_url, construct it from base URL
+    if not invite_url:
+        base = FRONTEND_BASE_URL.rstrip("/")
+        invite_url = f"{base}/accept-invite?email={to}&token={token}"
+
+    display_name = name or to.split("@")[0].replace(".", " ").title()
 
     subject = "You’re invited to L&D SaaS"
     html = f"""
-    <p>Hi,</p>
-    <p>You’ve been invited to L&D SaaS. Click the button below to set your password and activate your account.</p>
-    <p><a href="{accept_url}" style="background:#0ea5e9;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;">Accept Invitation</a></p>
-    <p>Or copy this link:<br>{accept_url}</p>
+    <p>Hi {display_name},</p>
+    <p>You’ve been invited to join L&D SaaS. Click the button below to set your password and activate your account.</p>
+    <p>
+      <a href="{invite_url}" style="background:#0ea5e9;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;">
+        Accept Invitation
+      </a>
+    </p>
+    <p>Or copy this link:<br>{invite_url}</p>
     <p>This link expires in 48 hours.</p>
     """
-    text = f"""You’ve been invited to L&D SaaS.
+    text = f"""Hi {display_name},
+
+You’ve been invited to L&D SaaS.
 Open this link to accept (expires in 48h):
-{accept_url}
+{invite_url}
 """
+
     msg = EmailMessage()
     msg["From"] = SMTP_FROM
-    msg["To"] = to_email
+    msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(text)
     msg.add_alternative(html, subtype="html")

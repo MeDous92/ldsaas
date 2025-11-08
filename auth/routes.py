@@ -62,7 +62,7 @@ def invite(
     invite_url = f"{base}?{query}{name_part}"
 
     # Send email (now passes name + invite_url)
-    msg = build_invite_email(email=email, token=token, name=data.name, invite_url=invite_url)
+    msg = build_invite_email(to=email, token=token, name=data.name, invite_url=invite_url)
     background.add_task(send_email, msg)
 
     # Return enriched payload for the caller
