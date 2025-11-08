@@ -15,13 +15,25 @@ pg_user_role = PGEnum(
     create_type=False,  # do NOT try to create from the ORM
 )
 
+pg_user_status = PGEnum(
+    "pending", "active", "inactive",
+    name="user_status",
+    create_type=False,  # enum already exists in DB; don't recreate from ORM
+)
+
 class User(SQLModel, table=True):
     __tablename__ = "users"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)  # DB has CITEXT + unique
     name: Optional[str] = None
-    status: Optional[str] = None
+    status: str = Field(
+        sa_column=Column(
+            pg_user_status,
+            nullable=False,
+            server_default=text("'pending'::user_status"),  # enum default, not plain text
+        )
+    )
 
     # password_hash is nullable in DB so invited users can exist without a password
     password_hash: Optional[str] = Field(default=None)
