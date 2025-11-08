@@ -13,7 +13,7 @@ from mailer import build_invite_email, send_email
 import os
 from urllib.parse import quote
 
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://app.example.com")
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://front.167.86.97.226.sslip.io")
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 @router.post("/login", response_model=LoginOut)
