@@ -14,6 +14,7 @@ def create_or_update_invite(
     token_hash: str,          # bcrypt-hashed token
     expires_at: datetime,
     invited_by: Optional[int] = None,
+    role: Optional[str] = None,
 ) -> User:
     user = get_user_by_email(session, email)
     if user is None:
@@ -21,6 +22,7 @@ def create_or_update_invite(
             email=email,
             name=name,
             is_active=False,
+            role=role or "employee",
             invite_token_hash=token_hash,
             invite_expires_at=expires_at,
             invited_at=datetime.utcnow(),
@@ -30,6 +32,8 @@ def create_or_update_invite(
     else:
         user.name = name or user.name
         user.is_active = False
+        if role:
+            user.role = role
         user.invite_token_hash = token_hash
         user.invite_expires_at = expires_at
         user.invited_at = datetime.utcnow()

@@ -14,6 +14,8 @@ services:
     environment:
       ENV: dev
       DATABASE_URL: postgresql+psycopg://testuser:testpass@db:5432/testdb
+      FRONTEND_ORIGIN: http://localhost:5173
+      FRONTEND_BASE_URL: http://localhost:5173
     ports:
       - "8000:8000"
 volumes:

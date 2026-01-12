@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+alembic
 sqlmodel
 sqlalchemy>=2.0
 psycopg[binary]

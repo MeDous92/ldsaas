@@ -6,7 +6,7 @@ from db import get_session
 from schemas import InviteIn, InviteOut, AcceptInviteIn, UserOut, LoginIn, LoginOut
 from .service import invite_user, accept_invite
 from . import repo
-from .deps import get_current_user, require_admin_user
+from .deps import get_current_user, require_admin_user, require_admin_or_manager
 from models import User
 from security import verify_password, create_access_token, create_refresh_token
 from mailer import build_invite_email, send_email
@@ -57,14 +57,20 @@ def login(
         )
     )
 
-@router.post("/invite", response_model=InviteOut, dependencies=[Depends(require_admin_user)])
+@router.post("/invite", response_model=InviteOut, dependencies=[Depends(require_admin_or_manager)])
 def invite(
     data: InviteIn,
     background: BackgroundTasks,
     session: Session = Depends(get_session),
-    actor: User = Depends(require_admin_user),
+    actor: User = Depends(require_admin_or_manager),
 ):
-    email, token = invite_user(session, data, actor_user_id=actor.id)
+    requested_role = data.role or "employee"
+    if requested_role not in {"admin", "manager", "employee"}:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    if actor.role == "manager" and requested_role != "employee":
+        raise HTTPException(status_code=403, detail="Managers can only invite employees")
+
+    email, token = invite_user(session, data, actor_user_id=actor.id, role=requested_role)
 
     # Build encoded accept-invite URL (includes optional name)
     base = f"{FRONTEND_ORIGIN}/accept-invite"

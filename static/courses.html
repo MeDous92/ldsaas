@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Employee Courses</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap");
+
+      :root {
+        --bg: #f7f3ea;
+        --panel: #fff8ee;
+        --ink: #1c1a16;
+        --muted: #5a5248;
+        --accent: #ff7a2f;
+        --accent-deep: #e05812;
+        --shadow: 0 12px 30px rgba(28, 26, 22, 0.12);
+        --radius: 18px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", "Helvetica Neue", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(900px 500px at 10% 10%, #fff1d6 0%, transparent 60%),
+          radial-gradient(800px 500px at 90% 0%, #ffe1c3 0%, transparent 55%),
+          linear-gradient(130deg, #f7f3ea 0%, #efe7dc 60%, #f3e7d5 100%);
+        min-height: 100vh;
+      }
+
+      .page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+        display: grid;
+        gap: 28px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: "Fraunces", "Times New Roman", serif;
+        font-size: clamp(2rem, 3vw, 3rem);
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+
+      .stack {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+
+      .card {
+        background: var(--panel);
+        border-radius: var(--radius);
+        padding: 22px;
+        box-shadow: var(--shadow);
+        border: 1px solid rgba(28, 26, 22, 0.08);
+        transform: translateY(10px);
+        opacity: 0;
+        animation: rise 0.6s ease forwards;
+      }
+
+      .card:nth-child(2) {
+        animation-delay: 0.1s;
+      }
+
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 1.2rem;
+      }
+
+      label {
+        display: block;
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(28, 26, 22, 0.2);
+        background: #fffdfa;
+        font-family: inherit;
+      }
+
+      .row {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 10px 16px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        color: #fff;
+        background: var(--accent);
+        cursor: pointer;
+        transition: transform 0.2s ease, background 0.2s ease;
+      }
+
+      button:hover {
+        background: var(--accent-deep);
+        transform: translateY(-1px);
+      }
+
+      .status {
+        font-size: 0.9rem;
+        color: var(--muted);
+        min-height: 1.2em;
+      }
+
+      .courses {
+        display: grid;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .course {
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: #fffaf3;
+        border: 1px solid rgba(28, 26, 22, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .course span {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      footer {
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      @keyframes rise {
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div>
+          <h1>Employee Courses</h1>
+          <p class="subtitle">Sign in, then load the courses your team can access.</p>
+        </div>
+      </header>
+
+      <section class="stack">
+        <div class="card">
+          <h2>Employee Login</h2>
+          <form id="login-form">
+            <div class="row">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="username" required />
+            </div>
+            <div class="row">
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" autocomplete="current-password" required />
+            </div>
+            <button type="submit">Sign In</button>
+          </form>
+          <p class="status" id="login-status"></p>
+        </div>
+
+        <div class="card">
+          <h2>Courses</h2>
+          <button id="load-courses">Load Courses</button>
+          <p class="status" id="courses-status"></p>
+          <div class="courses" id="courses-list"></div>
+        </div>
+      </section>
+
+      <footer>
+        Uses your access token stored in local storage as <strong>ldsaas_access_token</strong>.
+      </footer>
+    </div>
+
+    <script>
+      const loginForm = document.getElementById("login-form");
+      const loginStatus = document.getElementById("login-status");
+      const coursesStatus = document.getElementById("courses-status");
+      const coursesList = document.getElementById("courses-list");
+      const loadButton = document.getElementById("load-courses");
+
+      const TOKEN_KEY = "ldsaas_access_token";
+
+      function setStatus(target, message, isError = false) {
+        target.textContent = message;
+        target.style.color = isError ? "#9f2d18" : "var(--muted)";
+      }
+
+      async function login(email, password) {
+        const body = new URLSearchParams();
+        body.set("username", email);
+        body.set("password", password);
+        body.set("grant_type", "password");
+
+        const response = await fetch("/api/v1/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: body.toString(),
+        });
+
+        if (!response.ok) {
+          throw new Error("Login failed. Check your credentials.");
+        }
+
+        const data = await response.json();
+        localStorage.setItem(TOKEN_KEY, data.access_token);
+        return data;
+      }
+
+      async function loadCourses() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+          setStatus(coursesStatus, "Sign in first to fetch courses.", true);
+          return;
+        }
+
+        const response = await fetch("/api/v1/courses/", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          const detail = await response.json().catch(() => ({}));
+          throw new Error(detail.detail || "Unable to load courses.");
+        }
+
+        const courses = await response.json();
+        coursesList.innerHTML = "";
+        if (!courses.length) {
+          setStatus(coursesStatus, "No courses yet.");
+          return;
+        }
+
+        setStatus(coursesStatus, `Loaded ${courses.length} course(s).`);
+        courses.forEach((course) => {
+          const item = document.createElement("div");
+          item.className = "course";
+          item.innerHTML = `<strong>${course.name}</strong><span>${course.provider}</span>`;
+          coursesList.appendChild(item);
+        });
+      }
+
+      loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setStatus(loginStatus, "Signing in...");
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        try {
+          const data = await login(email, password);
+          setStatus(loginStatus, `Signed in as ${data.user.email}.`);
+        } catch (error) {
+          setStatus(loginStatus, error.message, true);
+        }
+      });
+
+      loadButton.addEventListener("click", async () => {
+        setStatus(coursesStatus, "Loading courses...");
+        try {
+          await loadCourses();
+        } catch (error) {
+          setStatus(coursesStatus, error.message, true);
+        }
+      });
+    </script>
+  </body>
+</html>

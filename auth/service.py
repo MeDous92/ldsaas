@@ -17,7 +17,7 @@ def _hash_invite_token(raw: str) -> str:
 def _verify_invite_token(raw: str, hashed: str) -> bool:
     return bcrypt.verify(raw, hashed)
 
-def invite_user(session: Session, data: InviteIn, actor_user_id: int | None) -> tuple[str, str]:
+def invite_user(session: Session, data: InviteIn, actor_user_id: int | None, role: str) -> tuple[str, str]:
     raw_token = os.urandom(16).hex()
     token_hash = _hash_invite_token(raw_token)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=INVITE_TTL_HOURS)
@@ -29,6 +29,7 @@ def invite_user(session: Session, data: InviteIn, actor_user_id: int | None) -> 
         token_hash=token_hash,
         expires_at=expires_at,
         invited_by=actor_user_id,
+        role=role,
     )
         # Keep invited users INACTIVE until they accept
     user.is_active = False

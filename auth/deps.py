@@ -27,3 +27,13 @@ def require_admin_user(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authenticated to send invitation, needs Admin permission.")
     return user
+
+def require_admin_or_manager(user: User = Depends(get_current_user)) -> User:
+    if user.role not in {"admin", "manager"}:
+        raise HTTPException(status_code=403, detail="Admin or Manager access required.")
+    return user
+
+def require_employee_user(user: User = Depends(get_current_user)) -> User:
+    if user.role != "employee":
+        raise HTTPException(status_code=403, detail="Employee access required.")
+    return user
