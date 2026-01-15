@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Optional
 from sqlmodel import Session, select
-from models import User
+from models import User, EmployeeManager
 from db import get_session
 from auth.deps import require_admin_user, get_current_user
 from users.status import derive_status
+from schemas import UserOut
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
@@ -18,6 +19,11 @@ def _get_user_or_404(session: Session, user_id: int) -> User:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
+
+
+@router.get("/me", response_model=UserOut)
+def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 # --- GET (temporary): list all users (id, name, email) ---
 
@@ -86,3 +92,22 @@ def hard_delete_user(
     session.delete(target)
     session.commit()
     return
+
+
+# --- NEW: Team Management Endpoint ---
+
+@router.get("/my-team", response_model=list[UserOut])
+def list_my_team(
+    session: Session = Depends(get_session),
+    manager: User = Depends(get_current_user),
+):
+    if manager.role != "manager":
+         raise HTTPException(status_code=403, detail="Only managers have a team.")
+    
+    # Select Users who are employees of this manager
+    stmt = (
+        select(User)
+        .join(EmployeeManager, User.id == EmployeeManager.employee_id)
+        .where(EmployeeManager.manager_id == manager.id)
+    )
+    return session.exec(stmt).all()

@@ -8,6 +8,7 @@ from auth.routes import router as auth_router
 from routers.courses import router as courses_router
 from routers.enrollments import router as enrollments_router
 from routers.users import router as users_router
+from routers.profiles import router as profiles_router
 
 app = FastAPI(title="L&D SaaS Backend", version="0.1.0")
 
@@ -26,6 +27,7 @@ def health():
     return {"status": "ok"}
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/api/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/courses", include_in_schema=False)
 def courses_page():
@@ -36,3 +38,4 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(courses_router)
 app.include_router(enrollments_router)
+app.include_router(profiles_router)

@@ -57,6 +57,83 @@ class User(SQLModel, table=True):
     invite_expires_at: Optional[datetime] = None
     email_verified_at: Optional[datetime] = None
 
+class EducationLevel(SQLModel, table=True):
+    __tablename__ = "education_levels"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    created_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
+
+
+class Country(SQLModel, table=True):
+    __tablename__ = "countries"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    code: Optional[str] = None
+    created_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
+
+
+class City(SQLModel, table=True):
+    __tablename__ = "cities"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    country_id: int = Field(foreign_key="countries.id")
+    name: str
+    created_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
+
+
+class UserProfile(SQLModel, table=True):
+    __tablename__ = "user_profiles"
+
+    user_id: int = Field(primary_key=True, foreign_key="users.id")
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    profile_picture_url: Optional[str] = None
+    bio: Optional[str] = None
+    education_level_id: Optional[int] = Field(default=None, foreign_key="education_levels.id")
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    postal_code: Optional[str] = None
+    city_id: Optional[int] = Field(default=None, foreign_key="cities.id")
+    country_id: Optional[int] = Field(default=None, foreign_key="countries.id")
+    phone_number: Optional[str] = None
+    personal_email: Optional[str] = None
+    date_of_birth: Optional[datetime] = None
+    attribute1: Optional[str] = None
+    attribute2: Optional[str] = None
+    attribute3: Optional[str] = None
+    attribute4: Optional[str] = None
+    attribute5: Optional[str] = None
+    attribute6: Optional[str] = None
+    attribute7: Optional[str] = None
+    attribute8: Optional[str] = None
+    created_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
+    updated_at: datetime = Field(
+        sa_column_kwargs={"server_default": text("now()"), "onupdate": text("now()")}
+    )
+
+
+class UserPersonalEmail(SQLModel, table=True):
+    __tablename__ = "user_personal_emails"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id")
+    email: str
+    is_primary: bool = Field(default=False)
+    created_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
+
+
+class UserDependent(SQLModel, table=True):
+    __tablename__ = "user_dependents"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id")
+    name: str
+    relationship: Optional[str] = None
+    date_of_birth: Optional[datetime] = None
+    created_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
+
 class CourseProvider(SQLModel, table=True):
     __tablename__ = "course_providers"
 
@@ -140,6 +217,7 @@ class CourseEnrollment(SQLModel, table=True):
     requested_at: datetime = Field(sa_column_kwargs={"server_default": text("now()")})
     approved_at: Optional[datetime] = None
     approved_by: Optional[int] = Field(default=None, foreign_key="users.id")
+    deadline: Optional[datetime] = None
 
 class Notification(SQLModel, table=True):
     __tablename__ = "notifications"

@@ -37,3 +37,8 @@ def require_employee_user(user: User = Depends(get_current_user)) -> User:
     if user.role != "employee":
         raise HTTPException(status_code=403, detail="Employee access required.")
     return user
+
+def require_employee_or_manager(user: User = Depends(get_current_user)) -> User:
+    if user.role not in {"employee", "manager", "admin"}:
+        raise HTTPException(status_code=403, detail="Employee or Manager access required.")
+    return user

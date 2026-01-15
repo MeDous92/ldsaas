@@ -1,9 +1,10 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
-from auth.deps import require_employee_user
+from auth.deps import get_current_user, require_employee_or_manager
 from db import get_session
-from models import Course, CourseEnrollment, EmployeeManager, Notification
+from models import Course, CourseEnrollment, EmployeeManager, Notification, User
 from schemas import CourseOut, CourseEnrollmentOut
 
 router = APIRouter(prefix="/api/v1/courses", tags=["courses"])
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/api/v1/courses", tags=["courses"])
 @router.get("/", response_model=list[CourseOut])
 def list_courses(
     session: Session = Depends(get_session),
-    _employee=Depends(require_employee_user),
+    _user=Depends(require_employee_or_manager),
 ):
     stmt = select(Course).order_by(Course.id)
     return session.exec(stmt).all()
@@ -22,7 +23,7 @@ def list_courses(
 def request_enrollment(
     course_id: int,
     session: Session = Depends(get_session),
-    employee=Depends(require_employee_user),
+    employee=Depends(require_employee_or_manager),
 ):
     course = session.get(Course, course_id)
     if not course:
@@ -42,9 +43,16 @@ def request_enrollment(
         course_id=course_id,
         status="pending",
     )
+    if employee.role == "manager":
+        enrollment.status = "approved"
+        enrollment.approved_at = datetime.now(timezone.utc)
+        enrollment.approved_by = employee.id
     session.add(enrollment)
     session.commit()
     session.refresh(enrollment)
+
+    if employee.role == "manager":
+        return enrollment
 
     manager = session.exec(
         select(EmployeeManager).where(EmployeeManager.employee_id == employee.id)
@@ -67,7 +75,7 @@ def request_enrollment(
 def toggle_assignment(
     course_id: int,
     session: Session = Depends(get_session),
-    user: User = Depends(require_employee_user), # Ideally manager check
+    user: User = Depends(get_current_user),
 ):
     if user.role != "manager" and user.role != "admin":
         raise HTTPException(status_code=403, detail="Only managers can assign courses")
