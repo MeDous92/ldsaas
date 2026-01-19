@@ -13,6 +13,10 @@ from schemas import CourseEnrollmentOut, NotificationOut, TeamEnrollmentOut, Cou
 router = APIRouter(prefix="/api/v1/enrollments", tags=["enrollments"])
 
 
+class RejectRequest(BaseModel):
+    reason: str
+
+
 @router.get("/me", response_model=list[CourseEnrollmentOut])
 def list_my_enrollments(
     session: Session = Depends(get_session),
@@ -166,10 +170,73 @@ def mark_notification_read(
     return notification
 
 
+@router.post("/{enrollment_id}/reject", response_model=CourseEnrollmentOut)
+def reject_enrollment(
+    enrollment_id: int,
+    req: RejectRequest,
+    session: Session = Depends(get_session),
+    rejector: User = Depends(get_current_user),
+):
+    enrollment = session.get(CourseEnrollment, enrollment_id)
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
+
+    if enrollment.status == "rejected":
+        return enrollment
+
+    # Permission check
+    if rejector.role == "admin":
+        pass
+    elif rejector.role == "manager":
+        # verify management relationship
+        rel = session.exec(
+            select(EmployeeManager).where(
+                EmployeeManager.manager_id == rejector.id,
+                EmployeeManager.employee_id == enrollment.employee_id
+            )
+        ).first()
+        if not rel:
+            raise HTTPException(status_code=403, detail="Not authorized to reject this employee's request")
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    enrollment.status = "rejected"
+    session.add(enrollment)
+    session.commit()
+    session.refresh(enrollment)
+
+    rejector_name = rejector.name or rejector.email
+    course = session.get(Course, enrollment.course_id)
+    course_name = course.name if course else "Unknown Course"
+
+    try:
+        notification = Notification(
+            user_id=enrollment.employee_id,
+            title="Enrollment Rejected",
+            body=f"Your request for {course_name} was rejected. Reason: {req.reason}",
+            type="enrollment_rejected",
+            meta={
+                "enrollment_id": enrollment.id,
+                "course_id": enrollment.course_id,
+                "rejector_id": rejector.id,
+                "reason": req.reason,
+            },
+        )
+        session.add(notification)
+        session.commit()
+    except Exception as e:
+        print(f"FAILED to create notification: {e}")
+
+    return enrollment
+
+
 class AssignmentRequest(BaseModel):
     course_id: int
     employee_id: int
     deadline: Optional[datetime] = None
+
+
+
 
 @router.post("/assign", response_model=CourseEnrollmentOut)
 def assign_course_to_employee(
